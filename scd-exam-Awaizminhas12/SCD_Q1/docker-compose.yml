@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build: ./api_gateway
+    ports:
+      - "3004:3000"
+    depends_on:
+      - auth-service
+      - blog-service
+      - comment-service
+      - profile-service
+    environment:
+      - NODE_ENV=production
+    networks:
+      - blog-network
+
+  auth-service:
+    build: ./auth_service
+    ports:
+      - "3000:3000"
+    environment:
+      - JWT_SECRET=your-secret-key
+      - NODE_ENV=production
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  blog-service:
+    build: ./blog_service
+    ports:
+      - "3001:3000"
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:3000
+      - JWT_SECRET=your-secret-key
+      - NODE_ENV=production
+    depends_on:
+      auth-service:
+        condition: service_healthy
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  comment-service:
+    build: ./comment_service
+    ports:
+      - "3002:3000"
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:3000
+      - BLOG_SERVICE_URL=http://blog-service:3000
+      - JWT_SECRET=your-secret-key
+      - NODE_ENV=production
+    depends_on:
+      - auth-service
+      - blog-service
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  profile-service:
+    build: ./profile_service
+    ports:
+      - "3003:3000"
+    environment:
+      - JWT_SECRET=your-secret-key
+      - NODE_ENV=production
+    depends_on:
+      - auth-service
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  blog-network:
+    driver: bridge
